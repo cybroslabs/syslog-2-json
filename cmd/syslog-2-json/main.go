@@ -171,9 +171,6 @@ func main() {
 	}(ctx, port)
 
 	// Wait for a signal to stop the program
-	select {
-	case <-ctx.Done():
-	}
-
+	<-ctx.Done()
 	wg.Wait()
 }
