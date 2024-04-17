@@ -1,0 +1,10 @@
+README.md
+docker-compose.yml
+syslog-2-json
+.idea
+.vscode
+.env
+.editorconfig
+.gitignore
+.golangci.yml
+Makefile

@@ -1,0 +1,4 @@
+!.vscode
+.idea
+.env
+./syslog-2-json
