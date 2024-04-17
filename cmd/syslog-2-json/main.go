@@ -80,8 +80,6 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, port int) {
 	}
 	defer listener.Close()
 
-	listener.Close()
-
 	buf := make([]byte, 2048)
 	for {
 		select {
