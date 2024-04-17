@@ -168,7 +168,10 @@ func main() {
 		handlers.UdpHandler(ctx, udpPort)
 	}(ctx, port)
 
+	svc.SetReady()
+
 	// Wait for a signal to stop the program
 	<-ctx.Done()
+	svc.SetNotReady()
 	wg.Wait()
 }
