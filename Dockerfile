@@ -6,6 +6,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
+COPY ./internal ./internal
 COPY ./cmd/syslog-2-json ./cmd/syslog-2-json
 
 RUN go build -a -o syslog-2-json ./cmd/syslog-2-json
