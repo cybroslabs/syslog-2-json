@@ -1,4 +1,4 @@
-module github.com/cybroslabs/hes-1-task-master
+module github.com/cybroslabs/syslog-2-json
 
 go 1.22.2
 

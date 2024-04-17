@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cybroslabs/hes-1-task-master/internal/service"
+	"github.com/cybroslabs/syslog-2-json/internal/service"
 	"github.com/libp2p/go-reuseport"
 	"go.uber.org/zap"
 
