@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +38,6 @@ func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, shutd
 	mux.HandleFunc("/livez", s.livenessProbeHandler)
 	mux.HandleFunc("/readyz", s.readinessProbeHandler)
 	mux.HandleFunc("/startupz", s.startupProbeHandler)
-	mux.Handle("/metrics", promhttp.Handler())
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
