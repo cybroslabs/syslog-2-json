@@ -31,7 +31,7 @@ func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, por
 
 	listener, err := reuseport.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		sluj.logger.Fatalf("TCP listen failed: %v", err)
+		sluj.logger.Errorf("TCP listen failed: %v", err)
 		return
 	}
 	defer func() { _ = listener.Close() }()
@@ -40,7 +40,8 @@ func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, por
 		// Wait for a connection.
 		conn, err := listener.Accept()
 		if err != nil {
-			sluj.logger.Fatalf("TCP accept failed: %v", err)
+			sluj.logger.Errorf("TCP accept failed: %v", err)
+			return
 		}
 		// Handle the connection in a new goroutine.
 		// The loop then returns to accepting, so that
@@ -78,7 +79,8 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 
 	listener, err := reuseport.ListenPacket("udp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		sluj.logger.Fatalf("UDP listen failed: %v", err)
+		sluj.logger.Errorf("UDP listen failed: %v", err)
+		return
 	}
 	defer listener.Close()
 
@@ -97,7 +99,8 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 			}
 		}
 		if err != nil {
-			sluj.logger.Fatalf("UDP read failed: %v (%v)", err)
+			sluj.logger.Errorf("UDP read failed: %v (%v)", err)
+			return
 		}
 	}
 }
@@ -155,11 +158,13 @@ func main() {
 
 	wg_subroutines.Add(1)
 	go func(ctx context.Context, tcpPort int) {
+		defer stop()
 		handlers.TcpHandler(ctx, wg_subroutines, tcpPort)
 	}(ctx, port)
 
 	wg_subroutines.Add(1)
 	go func(ctx context.Context, udpPort int) {
+		defer stop()
 		handlers.UdpHandler(ctx, wg_subroutines, udpPort)
 	}(ctx, port)
 
