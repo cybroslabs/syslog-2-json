@@ -46,5 +46,11 @@ spec:
             httpGet:
               path: /readyz
               port: probes
+          startupProbe:
+            httpGet:
+              path: /startupz
+              port: service
+            periodSeconds: 10
+            failureThreshold: 30
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
