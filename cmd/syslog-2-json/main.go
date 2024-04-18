@@ -157,21 +157,24 @@ func main() {
 	go svc.Start(ctx_service, wg_probes, 8090, logger)
 
 	wg_subroutines.Add(1)
-	go func(ctx context.Context, tcpPort int) {
+	go func(ctx context.Context, tcpPort int, logger *zap.SugaredLogger) {
+		defer logger.Info("TCP handler stopped")
 		defer stop()
 		handlers.TcpHandler(ctx, wg_subroutines, tcpPort)
-	}(ctx, port)
+	}(ctx, port, logger)
 
 	wg_subroutines.Add(1)
-	go func(ctx context.Context, udpPort int) {
+	go func(ctx context.Context, udpPort int, logger *zap.SugaredLogger) {
+		defer logger.Info("UDP handler stopped")
 		defer stop()
 		handlers.UdpHandler(ctx, wg_subroutines, udpPort)
-	}(ctx, port)
+	}(ctx, port, logger)
 
 	svc.SetReady()
 
 	// Wait for a signal to stop the program
 	<-ctx.Done()
+	logger.Info("Shutting down syslog2json...")
 
 	// Wait till all subroutines are done
 	svc.SetNotReady()
