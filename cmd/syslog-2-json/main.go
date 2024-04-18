@@ -25,6 +25,9 @@ var (
 
 type Syslog2Json struct {
 	logger *zap.SugaredLogger
+
+	tcpListener *net.Listener
+	udpListener *net.PacketConn
 }
 
 func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, port int) {
@@ -35,6 +38,7 @@ func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, por
 		sluj.logger.Errorf("TCP listen failed: %v", err)
 		return
 	}
+	sluj.tcpListener = &listener
 	defer func() { _ = listener.Close() }()
 
 	for {
@@ -83,6 +87,7 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 		sluj.logger.Errorf("UDP listen failed: %v", err)
 		return
 	}
+	sluj.udpListener = &listener
 	defer listener.Close()
 
 	buf := make([]byte, 2048)
@@ -103,6 +108,15 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 			sluj.logger.Errorf("UDP read failed: %v", err)
 			return
 		}
+	}
+}
+
+func (sluj *Syslog2Json) Close() {
+	if sluj.tcpListener != nil {
+		_ = (*sluj.tcpListener).Close()
+	}
+	if sluj.udpListener != nil {
+		_ = (*sluj.udpListener).Close()
 	}
 }
 
@@ -199,6 +213,7 @@ func main() {
 
 	// Wait till all subroutines are done
 	svc.SetNotReady()
+	handlers.Close()
 	wg_subroutines.Wait()
 
 	// Stop the probe service
