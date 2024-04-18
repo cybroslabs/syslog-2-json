@@ -57,17 +57,17 @@ func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, por
 				default:
 				}
 				n, err := c.Read(buf)
+				if n > 0 {
+					if err_handle := sluj.HandleSyslogMessage(c.RemoteAddr(), buf[:n]); err_handle != nil {
+						sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
+					}
+				}
 				if errors.Is(err, io.EOF) {
 					break
 				}
 				if err != nil {
 					sluj.logger.Error("TCP read failed: %v", err)
 					break
-				}
-				if n > 0 {
-					if err = sluj.HandleSyslogMessage(c.RemoteAddr(), buf[:n]); err != nil {
-						sluj.logger.Debug("Raw", buf[:n])
-					}
 				}
 			}
 		}(conn)
@@ -95,7 +95,7 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 		n, addr, err := listener.ReadFrom(buf)
 		if n > 0 {
 			if err_handle := sluj.HandleSyslogMessage(addr, buf[:n]); err_handle != nil {
-				sluj.logger.Error("Raw", string(buf[:n]))
+				sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
 			}
 		}
 		if err != nil {
