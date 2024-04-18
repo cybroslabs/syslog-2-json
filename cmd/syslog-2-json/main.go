@@ -92,12 +92,12 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 
 		n, addr, err := listener.ReadFrom(buf)
 		if n > 0 {
-			if err = sluj.HandleSyslogMessage(addr, buf[:n]); err != nil {
+			if err_handle := sluj.HandleSyslogMessage(addr, buf[:n]); err_handle != nil {
 				sluj.logger.Debug("Raw", buf[:n])
 			}
 		}
 		if err != nil {
-			sluj.logger.Fatalf("UDP read failed: %v", err)
+			sluj.logger.Fatalf("UDP read failed: %v (%v)", err)
 		}
 	}
 }
