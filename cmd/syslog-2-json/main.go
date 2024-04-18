@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-reuseport"
 	"go.uber.org/zap"
 
+	"github.com/influxdata/go-syslog/v3"
 	"github.com/influxdata/go-syslog/v3/rfc3164"
 	"github.com/influxdata/go-syslog/v3/rfc5424"
 )
@@ -120,6 +121,55 @@ func (sluj *Syslog2Json) Close() {
 	}
 }
 
+func (sluj *Syslog2Json) filterArgs(data *syslog.Base, extended *rfc5424.SyslogMessage) []string {
+	r := []string{}
+	if data == nil {
+		return r
+	}
+
+	if data.Facility != nil {
+		r = append(r, "Facility", fmt.Sprintf("%d", *data.Facility))
+	}
+	if data.Severity != nil {
+		r = append(r, "Severity", fmt.Sprintf("%d", *data.Severity))
+	}
+	if data.Priority != nil {
+		r = append(r, "Priority", fmt.Sprintf("%d", *data.Priority))
+	}
+	if data.Timestamp != nil {
+		r = append(r, "Timestamp", fmt.Sprintf("%v", *data.Timestamp))
+	}
+	if data.Hostname != nil {
+		r = append(r, "Hostname", *data.Hostname)
+	}
+	if data.Appname != nil {
+		r = append(r, "Appname", *data.Appname)
+	}
+	if data.ProcID != nil {
+		r = append(r, "ProcID", *data.ProcID)
+	}
+	if data.MsgID != nil {
+		r = append(r, "MsgID", *data.MsgID)
+	}
+
+	if extended != nil {
+		structured_data := extended.StructuredData
+		if structured_data != nil {
+			for k, v := range *structured_data {
+				if v == nil {
+					continue
+				}
+				r = append(
+					r,
+					k,
+					fmt.Sprintf("%v", v),
+				)
+			}
+		}
+	}
+	return r
+}
+
 func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 	// Try to parse the message as RFC5424 first
 	p_new := rfc5424.NewParser(rfc5424.WithBestEffort())
@@ -137,7 +187,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 
 		// TODO: Level or so?
 
-		sluj.logger.Infow(message, sm)
+		sluj.logger.Infow(message, sluj.filterArgs(m.(*syslog.Base), sm))
 		return nil
 	}
 
@@ -157,7 +207,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 
 		// TODO: Level or so?
 
-		sluj.logger.Infow(message, sm)
+		sluj.logger.Infow(message, sluj.filterArgs(m.(*syslog.Base), nil))
 		return nil
 	}
 
