@@ -30,6 +30,7 @@ spec:
           ports:
             - name: probes
               containerPort: 8081
+              containerPort: 8090
               protocol: TCP
             - name: syslog-udp
               containerPort: 5141

@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -142,19 +141,8 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	// Service and internal HTTP server (probes and metrics)
-	svcPortstr := os.Getenv("SERVICE_PORT")
-	if svcPortstr == "" {
-		logger.Info("SERVICE_PORT is not set, using default: 8090")
-		svcPortstr = "8090"
-	}
-
-	svcPort, err := strconv.Atoi(svcPortstr)
-	if err != nil {
-		logger.Fatal("Error parsing SERVICE_PORT, stopping...")
-	}
-
 	wg.Add(1)
-	go svc.Start(ctx, &wg, svcPort, svcShutdownDelay, logger)
+	go svc.Start(ctx, &wg, 8090, svcShutdownDelay, logger)
 
 	handlers := &Syslog2Json{
 		logger: logger,
