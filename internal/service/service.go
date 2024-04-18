@@ -28,7 +28,7 @@ func NewService(logger *zap.SugaredLogger) *Service {
 	}
 }
 
-func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, shutdownDelay time.Duration, logger *zap.SugaredLogger) {
+func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, logger *zap.SugaredLogger) {
 	defer wg.Done()
 
 	mux := http.NewServeMux()
@@ -55,9 +55,6 @@ func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, shutd
 	logger.Infof("Service HTTP server (probes and metrics) started on port %v", port)
 
 	<-ctx.Done()
-
-	logger.Infof("Received signal %v, shutting down service HTTP server (probes and metrics) in %v", sig, shutdownDelay)
-	time.Sleep(shutdownDelay)
 
 	logger.Info("Shutting down service HTTP server (probes and metrics)...")
 

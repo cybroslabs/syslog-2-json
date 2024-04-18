@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/cybroslabs/syslog-2-json/internal/service"
 	"github.com/libp2p/go-reuseport"
@@ -140,31 +139,40 @@ func main() {
 	logger.Info("Initializing syslog2json...")
 
 	svc := service.NewService(logger)
-	svcShutdownDelay := 5 * time.Second
 
-	wg := sync.WaitGroup{}
+	wg_subroutines := &sync.WaitGroup{}
+	wg_probes := &sync.WaitGroup{}
 	handlers := &Syslog2Json{
 		logger: logger,
 	}
 
 	// Service and internal HTTP server (probes and metrics)
-	wg.Add(1)
-	go svc.Start(ctx, &wg, 8090, svcShutdownDelay, logger)
+	ctx_service, cancel_service := context.WithCancel(context.Background())
+	defer cancel_service()
 
-	wg.Add(1)
+	wg_probes.Add(1)
+	go svc.Start(ctx_service, wg_probes, 8090, logger)
+
+	wg_subroutines.Add(1)
 	go func(ctx context.Context, tcpPort int) {
-		handlers.TcpHandler(ctx, &wg, tcpPort)
+		handlers.TcpHandler(ctx, wg_subroutines, tcpPort)
 	}(ctx, port)
 
-	wg.Add(1)
+	wg_subroutines.Add(1)
 	go func(ctx context.Context, udpPort int) {
-		handlers.UdpHandler(ctx, &wg, udpPort)
+		handlers.UdpHandler(ctx, wg_subroutines, udpPort)
 	}(ctx, port)
 
 	svc.SetReady()
 
 	// Wait for a signal to stop the program
 	<-ctx.Done()
+
+	// Wait till all subroutines are done
 	svc.SetNotReady()
-	wg.Wait()
+	wg_subroutines.Wait()
+
+	// Stop the probe service
+	cancel_service()
+	wg_probes.Wait()
 }
