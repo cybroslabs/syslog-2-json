@@ -62,10 +62,10 @@ func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, logge
 	defer cancel()
 
 	if err := server.Shutdown(timeoutCtx); err != nil {
-		logger.Errorf("Force to shutdown service HTTP server (probes and metrics): %v", err)
+		logger.Errorf("Failed to shutdown service HTTP server (probes and metrics): %v", err)
+	} else {
+		logger.Info("Service HTTP server (probes and metrics) has shut down")
 	}
-
-	logger.Info("Service HTTP server (probes and metrics) has shut down")
 }
 
 func (s *Service) SetNotReady() {
