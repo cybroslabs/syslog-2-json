@@ -253,7 +253,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 		if sm == nil {
 			return errFailedToGetSyslogData
 		}
-		sluj.log(sm.Message, sm.Severity, sluj.messageToArgsRfc5424(sm))
+		sluj.log(sm.Message, sm.Severity, sluj.messageToArgsRfc3164(sm))
 		return nil
 	}
 
