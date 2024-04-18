@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-reuseport"
 	"go.uber.org/zap"
 
+	"github.com/influxdata/go-syslog/v3/rfc3164"
 	"github.com/influxdata/go-syslog/v3/rfc5424"
 )
 
@@ -106,27 +107,47 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 }
 
 func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
-	p := rfc5424.NewParser(rfc5424.WithBestEffort())
-	m, err := p.Parse(msg)
-	if err != nil {
-		return err
+	// Try to parse the message as RFC5424 first
+	p_new := rfc5424.NewParser(rfc5424.WithBestEffort())
+	m, err := p_new.Parse(msg)
+	if err == nil {
+		sm := m.(*rfc5424.SyslogMessage)
+		if sm == nil {
+			return errFailedToGetSyslogData
+		}
+
+		message := ""
+		if sm.Message == nil {
+			message = *sm.Message
+		}
+
+		// TODO: Level or so?
+
+		sluj.logger.Infow(message, sm)
+		return nil
 	}
 
-	sm := m.(*rfc5424.SyslogMessage)
-	if sm == nil {
-		return errFailedToGetSyslogData
+	// If it fails, try to parse it as RFC3164
+	p_old := rfc3164.NewParser(rfc3164.WithRFC3339(), rfc3164.WithBestEffort())
+	m, err = p_old.Parse(msg)
+	if err == nil {
+		sm := m.(*rfc3164.SyslogMessage)
+		if sm == nil {
+			return errFailedToGetSyslogData
+		}
+
+		message := ""
+		if sm.Message == nil {
+			message = *sm.Message
+		}
+
+		// TODO: Level or so?
+
+		sluj.logger.Infow(message, sm)
+		return nil
 	}
 
-	message := ""
-	if sm.Message == nil {
-		message = *sm.Message
-	}
-
-	// TODO: Level or so?
-
-	sluj.logger.Infow(message, sm)
-
-	return nil
+	return err
 }
 
 func main() {
