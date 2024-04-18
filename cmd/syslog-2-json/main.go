@@ -117,7 +117,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 		}
 
 		message := ""
-		if sm.Message == nil {
+		if sm.Message != nil {
 			message = *sm.Message
 		}
 
@@ -137,7 +137,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 		}
 
 		message := ""
-		if sm.Message == nil {
+		if sm.Message != nil {
 			message = *sm.Message
 		}
 
