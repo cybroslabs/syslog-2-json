@@ -10,10 +10,16 @@ spec:
       targetPort: syslog-tcp
       protocol: TCP
       name: syslog-tcp
+      {{- if eq .Values.service.syslog2json.type "NodePort" }}
+      nodePort: {{ .Values.service.syslog2json.portTcp }}
+      {{- end}}
     - port: {{ .Values.service.syslog2json.portUdp }}
       targetPort: syslog-udp
       protocol: UDP
       name: syslog-udp
+      {{- if eq .Values.service.syslog2json.type "NodePort" }}
+      nodePort: {{ .Values.service.syslog2json.portUdp }}
+      {{- end}}
 
   selector:
     app.kubernetes.io/name: {{ .Chart.Name }}

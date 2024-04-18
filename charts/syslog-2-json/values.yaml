@@ -7,9 +7,9 @@ image:
 
 service:
   syslog2json:
-    type: ClusterIP
-    portTcp: 5141
-    portUdp: 5141
+    type: NodePort
+    portTcp: 30514
+    portUdp: 30514
 
 resources:
   limits:
