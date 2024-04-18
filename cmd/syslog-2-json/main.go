@@ -14,6 +14,7 @@ import (
 	"github.com/cybroslabs/syslog-2-json/internal/service"
 	"github.com/libp2p/go-reuseport"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/influxdata/go-syslog/v3/rfc3164"
 	"github.com/influxdata/go-syslog/v3/rfc5424"
@@ -24,7 +25,8 @@ var (
 )
 
 type Syslog2Json struct {
-	logger *zap.SugaredLogger
+	jsonLogger *zap.Logger
+	logger     *zap.SugaredLogger
 
 	tcpListener *net.Listener
 	udpListener *net.PacketConn
@@ -120,35 +122,35 @@ func (sluj *Syslog2Json) Close() {
 	}
 }
 
-func (sluj *Syslog2Json) messageToArgsRfc5424(data *rfc5424.SyslogMessage) []string {
-	r := []string{}
+func (sluj *Syslog2Json) messageToArgsRfc5424(data *rfc5424.SyslogMessage) []zap.Field {
+	r := []zap.Field{}
 	if data == nil {
 		return r
 	}
 
 	if data.Facility != nil {
-		r = append(r, "Facility", fmt.Sprintf("%d", *data.Facility))
+		r = append(r, zap.Field{Key: "Facility", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Facility)})
 	}
 	if data.Severity != nil {
-		r = append(r, "Severity", fmt.Sprintf("%d", *data.Severity))
+		r = append(r, zap.Field{Key: "Severity", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Severity)})
 	}
 	if data.Priority != nil {
-		r = append(r, "Priority", fmt.Sprintf("%d", *data.Priority))
+		r = append(r, zap.Field{Key: "Priority", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Priority)})
 	}
 	if data.Timestamp != nil {
-		r = append(r, "Timestamp", fmt.Sprintf("%v", *data.Timestamp))
+		r = append(r, zap.Field{Key: "Timestamp", Type: zapcore.StringType, String: fmt.Sprintf("%v", *data.Timestamp)})
 	}
 	if data.Hostname != nil {
-		r = append(r, "Hostname", *data.Hostname)
+		r = append(r, zap.Field{Key: "Hostname", Type: zapcore.StringType, String: *data.Hostname})
 	}
 	if data.Appname != nil {
-		r = append(r, "Appname", *data.Appname)
+		r = append(r, zap.Field{Key: "Appname", Type: zapcore.StringType, String: *data.Appname})
 	}
 	if data.ProcID != nil {
-		r = append(r, "ProcID", *data.ProcID)
+		r = append(r, zap.Field{Key: "ProcID", Type: zapcore.StringType, String: *data.ProcID})
 	}
 	if data.MsgID != nil {
-		r = append(r, "MsgID", *data.MsgID)
+		r = append(r, zap.Field{Key: "MsgID", Type: zapcore.StringType, String: *data.MsgID})
 	}
 
 	structured_data := data.StructuredData
@@ -159,8 +161,11 @@ func (sluj *Syslog2Json) messageToArgsRfc5424(data *rfc5424.SyslogMessage) []str
 			}
 			r = append(
 				r,
-				k,
-				fmt.Sprintf("%v", v),
+				zap.Field{
+					Key:    k,
+					Type:   zapcore.StringType,
+					String: fmt.Sprintf("%v", v),
+				},
 			)
 		}
 	}
@@ -168,35 +173,35 @@ func (sluj *Syslog2Json) messageToArgsRfc5424(data *rfc5424.SyslogMessage) []str
 	return r
 }
 
-func (sluj *Syslog2Json) messageToArgsRfc3164(data *rfc3164.SyslogMessage) []string {
-	r := []string{}
+func (sluj *Syslog2Json) messageToArgsRfc3164(data *rfc3164.SyslogMessage) []zap.Field {
+	r := []zap.Field{}
 	if data == nil {
 		return r
 	}
 
 	if data.Facility != nil {
-		r = append(r, "Facility", fmt.Sprintf("%d", *data.Facility))
+		r = append(r, zap.Field{Key: "Facility", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Facility)})
 	}
 	if data.Severity != nil {
-		r = append(r, "Severity", fmt.Sprintf("%d", *data.Severity))
+		r = append(r, zap.Field{Key: "Severity", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Severity)})
 	}
 	if data.Priority != nil {
-		r = append(r, "Priority", fmt.Sprintf("%d", *data.Priority))
+		r = append(r, zap.Field{Key: "Priority", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Priority)})
 	}
 	if data.Timestamp != nil {
-		r = append(r, "Timestamp", fmt.Sprintf("%v", *data.Timestamp))
+		r = append(r, zap.Field{Key: "Timestamp", Type: zapcore.StringType, String: fmt.Sprintf("%v", *data.Timestamp)})
 	}
 	if data.Hostname != nil {
-		r = append(r, "Hostname", *data.Hostname)
+		r = append(r, zap.Field{Key: "Hostname", Type: zapcore.StringType, String: *data.Hostname})
 	}
 	if data.Appname != nil {
-		r = append(r, "Appname", *data.Appname)
+		r = append(r, zap.Field{Key: "Appname", Type: zapcore.StringType, String: *data.Appname})
 	}
 	if data.ProcID != nil {
-		r = append(r, "ProcID", *data.ProcID)
+		r = append(r, zap.Field{Key: "ProcID", Type: zapcore.StringType, String: *data.ProcID})
 	}
 	if data.MsgID != nil {
-		r = append(r, "MsgID", *data.MsgID)
+		r = append(r, zap.Field{Key: "MsgID", Type: zapcore.StringType, String: *data.MsgID})
 	}
 
 	return r
@@ -219,7 +224,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 
 		// TODO: Level or so?
 
-		sluj.logger.Infow(message, sluj.messageToArgsRfc5424(sm))
+		sluj.jsonLogger.Info(message, sluj.messageToArgsRfc5424(sm)...)
 		return nil
 	}
 
@@ -239,7 +244,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 
 		// TODO: Level or so?
 
-		sluj.logger.Infow(message, sluj.messageToArgsRfc3164(sm))
+		sluj.jsonLogger.Info(message, sluj.messageToArgsRfc3164(sm)...)
 		return nil
 	}
 
@@ -263,7 +268,8 @@ func main() {
 	wg_subroutines := &sync.WaitGroup{}
 	wg_probes := &sync.WaitGroup{}
 	handlers := &Syslog2Json{
-		logger: logger,
+		jsonLogger: zap_logger,
+		logger:     logger,
 	}
 
 	// Service and internal HTTP server (probes and metrics)
