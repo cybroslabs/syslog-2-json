@@ -207,6 +207,31 @@ func (sluj *Syslog2Json) messageToArgsRfc3164(data *rfc3164.SyslogMessage) []zap
 	return r
 }
 
+func (sluj *Syslog2Json) log(message *string, severity *uint8, data []zap.Field) {
+	iseverity := 6
+	if severity != nil {
+		iseverity = int(*severity)
+	}
+
+	imessage := ""
+	if message != nil {
+		imessage = *message
+	}
+
+	switch iseverity {
+	case 0, 1, 2, 3:
+		sluj.jsonLogger.Error(imessage, data...)
+	case 4:
+		sluj.jsonLogger.Warn(imessage, data...)
+	case 5, 6:
+		sluj.jsonLogger.Info(imessage, data...)
+	case 7:
+		sluj.jsonLogger.Debug(imessage, data...)
+	default:
+		sluj.jsonLogger.Info(imessage, data...)
+	}
+}
+
 func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 	// Try to parse the message as RFC5424 first
 	p_new := rfc5424.NewParser(rfc5424.WithBestEffort())
@@ -216,15 +241,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 		if sm == nil {
 			return errFailedToGetSyslogData
 		}
-
-		message := ""
-		if sm.Message != nil {
-			message = *sm.Message
-		}
-
-		// TODO: Level or so?
-
-		sluj.jsonLogger.Info(message, sluj.messageToArgsRfc5424(sm)...)
+		sluj.log(sm.Message, sm.Severity, sluj.messageToArgsRfc5424(sm))
 		return nil
 	}
 
@@ -236,15 +253,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 		if sm == nil {
 			return errFailedToGetSyslogData
 		}
-
-		message := ""
-		if sm.Message != nil {
-			message = *sm.Message
-		}
-
-		// TODO: Level or so?
-
-		sluj.jsonLogger.Info(message, sluj.messageToArgsRfc3164(sm)...)
+		sluj.log(sm.Message, sm.Severity, sluj.messageToArgsRfc5424(sm))
 		return nil
 	}
 
@@ -255,7 +264,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) // os.Interrupt = syscall.SIGINT
 	defer stop()
 
-	zap_logger, _ := zap.NewProduction()
+	zap_cfg := zap.NewProductionConfig()
+	zap_cfg.DisableCaller = true
+	zap_cfg.DisableStacktrace = true
+
+	zap_logger, _ := zap_cfg.Build()
 	defer func() { _ = zap_logger.Sync() }()
 	logger := zap_logger.Sugar()
 
