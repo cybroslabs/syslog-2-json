@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -57,10 +54,8 @@ func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, shutd
 
 	logger.Infof("Service HTTP server (probes and metrics) started on port %v", port)
 
-	quit := make(chan os.Signal, 1)
+	<-ctx.Done()
 
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	sig := <-quit
 	logger.Infof("Received signal %v, shutting down service HTTP server (probes and metrics) in %v", sig, shutdownDelay)
 	time.Sleep(shutdownDelay)
 

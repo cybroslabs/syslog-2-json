@@ -27,7 +27,9 @@ type Syslog2Json struct {
 	logger *zap.SugaredLogger
 }
 
-func (sluj *Syslog2Json) TcpHandler(ctx context.Context, port int) {
+func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, port int) {
+	defer wg.Done()
+
 	listener, err := reuseport.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		sluj.logger.Fatalf("TCP listen failed: %v", err)
@@ -72,7 +74,9 @@ func (sluj *Syslog2Json) TcpHandler(ctx context.Context, port int) {
 	}
 }
 
-func (sluj *Syslog2Json) UdpHandler(ctx context.Context, port int) {
+func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, port int) {
+	defer wg.Done()
+
 	listener, err := reuseport.ListenPacket("udp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		sluj.logger.Fatalf("UDP listen failed: %v", err)
@@ -139,21 +143,22 @@ func main() {
 	svcShutdownDelay := 5 * time.Second
 
 	wg := sync.WaitGroup{}
+	handlers := &Syslog2Json{
+		logger: logger,
+	}
 
 	// Service and internal HTTP server (probes and metrics)
 	wg.Add(1)
 	go svc.Start(ctx, &wg, 8090, svcShutdownDelay, logger)
 
-	handlers := &Syslog2Json{
-		logger: logger,
-	}
-
+	wg.Add(1)
 	go func(ctx context.Context, tcpPort int) {
-		handlers.TcpHandler(ctx, tcpPort)
+		handlers.TcpHandler(ctx, &wg, tcpPort)
 	}(ctx, port)
 
+	wg.Add(1)
 	go func(ctx context.Context, udpPort int) {
-		handlers.UdpHandler(ctx, udpPort)
+		handlers.UdpHandler(ctx, &wg, udpPort)
 	}(ctx, port)
 
 	svc.SetReady()
