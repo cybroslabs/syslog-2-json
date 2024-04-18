@@ -123,10 +123,12 @@ func (sluj *Syslog2Json) Close() {
 }
 
 func (sluj *Syslog2Json) messageToArgsRfc5424(data *rfc5424.SyslogMessage) []zap.Field {
-	r := []zap.Field{}
+	r := make([]zap.Field, 0)
 	if data == nil {
 		return r
 	}
+
+	r = append(r, zap.Field{Key: "syslog", Type: zapcore.StringType, String: "RFC5424"})
 
 	if data.Facility != nil {
 		r = append(r, zap.Field{Key: "Facility", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Facility)})
@@ -174,10 +176,12 @@ func (sluj *Syslog2Json) messageToArgsRfc5424(data *rfc5424.SyslogMessage) []zap
 }
 
 func (sluj *Syslog2Json) messageToArgsRfc3164(data *rfc3164.SyslogMessage) []zap.Field {
-	r := []zap.Field{}
+	r := make([]zap.Field, 0)
 	if data == nil {
 		return r
 	}
+
+	r = append(r, zap.Field{Key: "syslog", Type: zapcore.StringType, String: "RFC3164"})
 
 	if data.Facility != nil {
 		r = append(r, zap.Field{Key: "Facility", Type: zapcore.StringType, String: fmt.Sprintf("%d", *data.Facility)})
@@ -216,6 +220,10 @@ func (sluj *Syslog2Json) log(message *string, severity *uint8, data []zap.Field)
 	imessage := ""
 	if message != nil {
 		imessage = *message
+	}
+
+	if len(imessage) == 0 && len(data) == 0 {
+		return
 	}
 
 	switch iseverity {
