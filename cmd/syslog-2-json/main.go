@@ -240,10 +240,14 @@ func (sluj *Syslog2Json) log(message *string, severity *uint8, data []zap.Field)
 	}
 }
 
+var (
+	parserRfc5424 = rfc5424.NewParser()
+	parserRfc3164 = rfc3164.NewParser(rfc3164.WithRFC3339())
+)
+
 func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 	// Try to parse the message as RFC5424 first
-	p_new := rfc5424.NewParser(rfc5424.WithBestEffort())
-	m, err := p_new.Parse(msg)
+	m, err := parserRfc5424.Parse(msg)
 	if err == nil {
 		sm := m.(*rfc5424.SyslogMessage)
 		if sm == nil {
@@ -254,8 +258,7 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 	}
 
 	// If it fails, try to parse it as RFC3164
-	p_old := rfc3164.NewParser(rfc3164.WithRFC3339(), rfc3164.WithBestEffort())
-	m, err = p_old.Parse(msg)
+	m, err = parserRfc3164.Parse(msg)
 	if err == nil {
 		sm := m.(*rfc3164.SyslogMessage)
 		if sm == nil {
