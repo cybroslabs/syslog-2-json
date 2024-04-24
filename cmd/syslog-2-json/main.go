@@ -248,7 +248,7 @@ var (
 func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 	// Try to parse the message as RFC5424 first
 	m, err := parserRfc5424.Parse(msg)
-	if err == nil {
+	if (err == nil) && (m != nil) {
 		sm := m.(*rfc5424.SyslogMessage)
 		if sm == nil {
 			return errFailedToGetSyslogData
@@ -259,13 +259,17 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 
 	// If it fails, try to parse it as RFC3164
 	m, err = parserRfc3164.Parse(msg)
-	if err == nil {
+	if (err == nil) && (m != nil) {
 		sm := m.(*rfc3164.SyslogMessage)
 		if sm == nil {
 			return errFailedToGetSyslogData
 		}
 		sluj.log(sm.Message, sm.Severity, sluj.messageToArgsRfc3164(sm))
 		return nil
+	}
+
+	if err == nil {
+		err = errFailedToGetSyslogData
 	}
 
 	return err
