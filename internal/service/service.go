@@ -8,7 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+
+	"net/http/pprof"
 )
 
 type Service struct {
@@ -17,7 +20,6 @@ type Service struct {
 	alive bool
 	ready bool
 	rm    sync.RWMutex
-	// TODO: add metrics store here
 }
 
 func NewService(logger *zap.SugaredLogger) *Service {
@@ -28,20 +30,28 @@ func NewService(logger *zap.SugaredLogger) *Service {
 	}
 }
 
-func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, logger *zap.SugaredLogger) {
+func (s *Service) Run(ctx context.Context, stop func(), wg *sync.WaitGroup, port int, logger *zap.SugaredLogger) {
 	defer wg.Done()
+	defer stop()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/livez", s.livenessProbeHandler)
 	mux.HandleFunc("/readyz", s.readinessProbeHandler)
 	mux.HandleFunc("/startupz", s.startupProbeHandler)
+	mux.Handle("/metrics", promhttp.Handler())
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           mux,
 		ReadTimeout:       3 * time.Second,
 		ReadHeaderTimeout: 3 * time.Second,
-		WriteTimeout:      1 * time.Second,
+		WriteTimeout:      45 * time.Second,
 	}
 
 	go func() {
@@ -62,7 +72,7 @@ func (s *Service) Start(ctx context.Context, wg *sync.WaitGroup, port int, logge
 	defer cancel()
 
 	if err := server.Shutdown(timeoutCtx); err != nil {
-		logger.Errorf("Failed to shutdown service HTTP server (probes and metrics): %v", err)
+		logger.Errorf("Failed to shut down service HTTP server (probes and metrics): %v", err)
 	} else {
 		logger.Info("Service HTTP server (probes and metrics) has shut down")
 	}

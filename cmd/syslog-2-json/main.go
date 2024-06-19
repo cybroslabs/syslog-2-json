@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/cybroslabs/syslog-2-json/internal/service"
 	"github.com/libp2p/go-reuseport"
@@ -276,8 +277,10 @@ func (sluj *Syslog2Json) HandleSyslogMessage(addr net.Addr, msg []byte) error {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) // os.Interrupt = syscall.SIGINT
-	defer stop()
+	mainCtx, mainStop := context.WithCancel(context.Background())
+	subroutinesCtx, subroutinesStop := context.WithCancel(mainCtx)
+	defer mainStop()
+	shutdownCtx, _ := signal.NotifyContext(subroutinesCtx, os.Interrupt, syscall.SIGTERM)
 
 	zap_cfg := zap.NewProductionConfig()
 	zap_cfg.DisableCaller = true
@@ -293,46 +296,52 @@ func main() {
 
 	svc := service.NewService(logger)
 
-	wg_subroutines := &sync.WaitGroup{}
-	wg_probes := &sync.WaitGroup{}
 	handlers := &Syslog2Json{
 		jsonLogger: zap_logger,
 		logger:     logger,
 	}
 
+	wg := &sync.WaitGroup{}
+
 	// Service and internal HTTP server (probes and metrics)
-	ctx_service, cancel_service := context.WithCancel(context.Background())
-	defer cancel_service()
+	wg.Add(1)
+	go svc.Run(subroutinesCtx, subroutinesStop, wg, 8090, logger)
 
-	wg_probes.Add(1)
-	go svc.Start(ctx_service, wg_probes, 8090, logger)
-
-	wg_subroutines.Add(1)
-	go func(ctx context.Context, tcpPort int, logger *zap.SugaredLogger) {
+	wg.Add(1)
+	go func(ctx context.Context, stop func(), tcpPort int, logger *zap.SugaredLogger) {
 		defer logger.Info("TCP handler stopped")
 		defer stop()
-		handlers.TcpHandler(ctx, wg_subroutines, tcpPort)
-	}(ctx, port, logger)
+		handlers.TcpHandler(ctx, wg, tcpPort)
+	}(mainCtx, mainStop, port, logger)
 
-	wg_subroutines.Add(1)
-	go func(ctx context.Context, udpPort int, logger *zap.SugaredLogger) {
+	wg.Add(1)
+	go func(ctx context.Context, stop func(), udpPort int, logger *zap.SugaredLogger) {
 		defer logger.Info("UDP handler stopped")
 		defer stop()
-		handlers.UdpHandler(ctx, wg_subroutines, udpPort)
-	}(ctx, port, logger)
+		handlers.UdpHandler(ctx, wg, udpPort)
+	}(mainCtx, mainStop, port, logger)
 
+	// Set the service to ready
 	svc.SetReady()
 
-	// Wait for a signal to stop the program
-	<-ctx.Done()
-	logger.Info("Shutting down syslog2json...")
+	// Wait for shutdown and or main stop event
+	<-shutdownCtx.Done()
+	shutdownBegan := time.Now()
 
-	// Wait till all subroutines are done
+	logger.Infof("Shutting down server gracefully...")
+
+	// Set the service to not ready and give Kubernetes some time to stop sending traffic
 	svc.SetNotReady()
-	handlers.Close()
-	wg_subroutines.Wait()
+	if mainCtx.Err() == nil {
+		// If the mainCtx was not yet triggered then we shall keep 'not-ready' signal for a while
+		time.Sleep(5 * time.Second)
+	}
 
-	// Stop the probe service
-	cancel_service()
-	wg_probes.Wait()
+	// Stop the server (if it's still running)
+	mainStop()
+
+	// Wait for the server to stop
+	wg.Wait()
+
+	logger.Infof("Server shut down gracefully. Took %v", time.Since(shutdownBegan))
 }
