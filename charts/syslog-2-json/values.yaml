@@ -1,7 +1,6 @@
 image:
-  repository: ghcr.io/cybroslabs/syslog-2-json
+  registry: registry.clbs.io/cybroslabs/syslog-2-json/syslog-2-json
   tag: latest
-
   pullPolicy: Always
   pullSecrets: []
 

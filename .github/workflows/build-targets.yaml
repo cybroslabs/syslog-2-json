@@ -1,0 +1,65 @@
+name: Build Docker Image
+
+on:
+  workflow_run:
+    workflows: ["Set Version"]
+    types: [completed]
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+
+    runs-on: self-hosted
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      matrix:
+        target: [syslog-2-json]
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }} # checkout the correct branch name
+          fetch-tags: true
+
+      - id: set-env
+        run: echo "version=`echo $(git describe --tags --abbrev=0 --exact-match || echo 'v0.0.0')`" >> $GITHUB_OUTPUT
+
+      - name: setup qemu
+        uses: docker/setup-qemu-action@v3
+
+      - name: setup docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CONTAINER_REGISTRY }}
+          username: ${{ secrets.CONTAINER_REGISTRY_USER }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PASS }}
+
+      - name: docker metadata
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: |
+            ${{ secrets.CONTAINER_REGISTRY }}/${{ github.repository }}/${{ matrix.target }}
+          tags: |
+            type=ref,event=branch,suffix=-${{ github.sha }}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=${{ steps.set-env.outputs.version }}
+
+      - name: build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.set-env.outputs.version }}

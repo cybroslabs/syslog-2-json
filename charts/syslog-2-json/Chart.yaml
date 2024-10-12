@@ -1,4 +1,6 @@
 apiVersion: v2
 name: syslog-2-json
 description: A Helm chart for Kubernetes
+type: application
 version: 0.0.0
+appVersion: v0.0.0 # True version is set by the GitHub Actions workflow
