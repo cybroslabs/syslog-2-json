@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/libp2p/go-reuseport v0.4.0
-	github.com/prometheus/client_golang v1.20.4
+	github.com/prometheus/client_golang v1.20.5
 	go.uber.org/zap v1.27.0
 )
 
