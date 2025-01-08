@@ -65,9 +65,14 @@ func (sluj *Syslog2Json) TcpHandler(ctx context.Context, wg *sync.WaitGroup, por
 				default:
 				}
 				n, err := c.Read(buf)
-				if n > 0 {
-					if err_handle := sluj.HandleSyslogMessage(c.RemoteAddr(), buf[:n]); err_handle != nil {
-						sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
+				for n > 0 {
+					n_next := n - 1
+					if buf[n_next] <= 32 {
+						n--
+					} else {
+						if err_handle := sluj.HandleSyslogMessage(c.RemoteAddr(), buf[:n]); err_handle != nil {
+							sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
+						}
 					}
 				}
 				if errors.Is(err, io.EOF) {
@@ -102,10 +107,15 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 		}
 
 		n, addr, err := listener.ReadFrom(buf)
-		if n > 0 {
+		for n > 0 {
+			n_next := n - 1
+			if buf[n_next] <= 32 {
+				n--
+			} else {
 			if err_handle := sluj.HandleSyslogMessage(addr, buf[:n]); err_handle != nil {
 				sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
 			}
+		}
 		}
 		if err != nil {
 			sluj.logger.Errorf("UDP read failed: %v", err)
