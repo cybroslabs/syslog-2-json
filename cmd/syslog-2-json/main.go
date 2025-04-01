@@ -96,7 +96,7 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 		return
 	}
 	sluj.udpListener = &listener
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	buf := make([]byte, 2048)
 	for {
@@ -112,10 +112,10 @@ func (sluj *Syslog2Json) UdpHandler(ctx context.Context, wg *sync.WaitGroup, por
 			if buf[n_next] <= 32 {
 				n--
 			} else {
-			if err_handle := sluj.HandleSyslogMessage(addr, buf[:n]); err_handle != nil {
-				sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
+				if err_handle := sluj.HandleSyslogMessage(addr, buf[:n]); err_handle != nil {
+					sluj.logger.Errorf("Error %v for raw[%v]: %v", err_handle, n, string(buf[:n]))
+				}
 			}
-		}
 		}
 		if err != nil {
 			sluj.logger.Errorf("UDP read failed: %v", err)
