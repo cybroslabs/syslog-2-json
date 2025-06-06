@@ -2,7 +2,7 @@ module github.com/cybroslabs/syslog-2-json
 
 go 1.23.0
 
-toolchain go1.24.3
+toolchain go1.24.4
 
 require (
 	github.com/influxdata/go-syslog/v3 v3.0.0
