@@ -11,9 +11,10 @@ COPY ./cmd/syslog-2-json ./cmd/syslog-2-json
 
 RUN go build -a -o syslog-2-json ./cmd/syslog-2-json
 
-FROM alpine:3.22 AS syslog-2-json
+FROM alpine:3.22.1 AS syslog-2-json
 
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates \
+    && update-ca-certificates
 
 WORKDIR /app
 
